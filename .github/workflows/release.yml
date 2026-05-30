@@ -1,0 +1,44 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build Linux binary
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build binaries
+        run: |
+          bun run build:embed
+          bun build --compile --target=bun-linux-x64   src/index.ts --outfile dist/ptero-amd64
+          bun build --compile --target=bun-linux-arm64 src/index.ts --outfile dist/ptero-arm64
+
+      - name: Generate checksums
+        run: |
+          sha256sum dist/ptero-amd64 | awk '{print $1, "ptero-amd64"}' > dist/ptero-amd64.sha256
+          sha256sum dist/ptero-arm64 | awk '{print $1, "ptero-arm64"}' > dist/ptero-arm64.sha256
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/ptero-amd64
+            dist/ptero-amd64.sha256
+            dist/ptero-arm64
+            dist/ptero-arm64.sha256
+          generate_release_notes: true
