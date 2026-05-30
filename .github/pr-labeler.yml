@@ -1,0 +1,56 @@
+'breaking change':
+  - head-branch:
+      - '^breaking[/-]'
+      - '^major[/-]'
+
+'feature request':
+  - head-branch:
+      - '^feat[/-]'
+      - '^feature[/-]'
+
+bug:
+  - head-branch:
+      - '^fix[/-]'
+      - '^bug[/-]'
+
+chore:
+  - head-branch:
+      - '^chore[/-]'
+
+refactor:
+  - head-branch:
+      - '^refactor[/-]'
+
+docs:
+  - head-branch:
+      - '^docs[/-]'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tsconfig*.json
+          - eslint.config.js
+          - .prettierrc
+          - .editorconfig
+          - .gitignore
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - package.json
+          - bun.lock
+          - renovate.json
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.test.ts'
+          - test/**

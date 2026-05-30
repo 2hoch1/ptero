@@ -1,0 +1,24 @@
+name: Lock Ancient Issues
+
+on:
+  schedule:
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: lock
+  cancel-in-progress: false
+
+jobs:
+  lock:
+    name: Lock ancient issues
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: dessant/lock-threads@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-inactive-days: 365
+          issue-lock-reason: resolved
+          process-only: issues

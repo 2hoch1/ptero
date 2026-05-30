@@ -24,7 +24,6 @@ jobs:
 
       - name: Build binaries
         run: |
-          bun run build:embed
           bun build --compile --target=bun-linux-x64   src/index.ts --outfile dist/ptero-amd64
           bun build --compile --target=bun-linux-arm64 src/index.ts --outfile dist/ptero-arm64
 
