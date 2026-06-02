@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="2hoch1/pterodactyl-installer"
+REPO="2hoch1/ptero"
 BASE_URL="https://github.com/${REPO}/releases/latest/download"
 
 case "$(uname -m)" in
@@ -13,7 +13,7 @@ BINARY="ptero-${ARCH}"
 DEST="/usr/local/bin/ptero"
 
 if [[ "$(id -u)" -ne 0 ]]; then
-  echo "Run as root: curl -sSL pterodactyl.2hoch1.dev/get.sh | sudo bash"
+  echo "Run as root: curl -sSL https://ptero.2hoch1.dev/get.sh | sudo bash"
   exit 1
 fi
 
