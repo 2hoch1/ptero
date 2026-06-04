@@ -39,6 +39,15 @@ type ApiItem<T> = { attributes: T };
 export type PanelClient = ReturnType<typeof createClient>;
 
 export function createClient(baseUrl: string, apiKey: string) {
+  try {
+    // An unparseable base URL otherwise surfaces as fetch() ERR_INVALID_URL
+    // on every request; reject it here with the offending value.
+    new URL(baseUrl);
+  } catch {
+    throw new Error(
+      `Invalid panel URL "${baseUrl}". Expected an absolute URL like https://panel.example.com`
+    );
+  }
   const base = `${baseUrl}/api/application`;
   const headers = {
     Authorization: `Bearer ${apiKey}`,

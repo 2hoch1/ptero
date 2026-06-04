@@ -20,6 +20,10 @@ beforeEach(() => {
 describe('createClient', () => {
   const client = createClient('https://panel.example.com', 'ptla_testkey');
 
+  it('throws on an unparseable base URL', () => {
+    expect(() => createClient('not-a-valid-url', 'ptla_testkey')).toThrow('Invalid panel URL');
+  });
+
   it('sends Authorization header on every request', async () => {
     mockFetch.mockImplementation(() => makeResponse({ data: [] }));
     await client.getUsers();

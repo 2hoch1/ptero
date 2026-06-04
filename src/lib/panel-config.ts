@@ -40,22 +40,44 @@ ApiKey::create([
 echo $id . $token . PHP_EOL;
 `;
 
+export function normalizePanelUrl(rawUrl: string): string | null {
+  let url = rawUrl.trim();
+  // Laravel .env values are often quoted, e.g. APP_URL="https://panel.example.com".
+  if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
+    url = url.slice(1, -1).trim();
+  }
+  // Drop trailing slashes so path concatenation stays clean.
+  url = url.replace(/\/+$/, '');
+  if (!url) return null;
+  // Without a scheme, fetch() treats the value as relative and throws ERR_INVALID_URL.
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
+  }
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 function readLocalPanelUrl(): string | null {
   if (!existsSync(PANEL_ENV)) return null;
-  const env = readFileSync(PANEL_ENV, 'utf-8');
-  const match = env.match(/^APP_URL=(.+)$/m);
-  return match ? match[1].trim().replace(/\/$/, '') : null;
+  const envContents = readFileSync(PANEL_ENV, 'utf-8');
+  const appUrlMatch = envContents.match(/^APP_URL=(.+)$/m);
+  return appUrlMatch ? normalizePanelUrl(appUrlMatch[1]) : null;
 }
 
 function generateLocalApiKey(): string | null {
   try {
-    const raw = execSync('php /dev/stdin', {
+    const rawKey = execSync('php /dev/stdin', {
       input: PHP_KEY_SCRIPT,
       stdio: ['pipe', 'pipe', 'pipe'],
       encoding: 'utf-8',
       shell: '/bin/bash',
     }).trim();
-    return `ptla_${raw}`;
+    return `ptla_${rawKey}`;
   } catch {
     return null;
   }
@@ -64,15 +86,17 @@ function generateLocalApiKey(): string | null {
 function readConfigFile(): PanelConfig | null {
   if (!existsSync(CONFIG_PATH)) return null;
   try {
-    return JSON.parse(readFileSync(CONFIG_PATH, 'utf-8')) as PanelConfig;
+    const storedConfig = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8')) as Partial<PanelConfig>;
+    if (typeof storedConfig.url !== 'string' || typeof storedConfig.apiKey !== 'string') return null;
+    return { url: storedConfig.url, apiKey: storedConfig.apiKey };
   } catch {
     return null;
   }
 }
 
-function saveConfigFile(cfg: PanelConfig): void {
+function saveConfigFile(config: PanelConfig): void {
   mkdirSync(join(homedir(), '.config', 'ptero'), { recursive: true });
-  writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
+  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
 }
 
 export async function getPanelConfig(): Promise<PanelConfig> {
@@ -83,16 +107,24 @@ export async function getPanelConfig(): Promise<PanelConfig> {
   }
 
   const saved = readConfigFile();
-  if (saved) return saved;
+  if (saved) {
+    const savedUrl = normalizePanelUrl(saved.url);
+    if (savedUrl) return { url: savedUrl, apiKey: saved.apiKey };
+  }
 
   p.log.info('No panel connection configured. Please provide your panel details.');
 
   const isCancel = p.isCancel;
 
-  const url = await p.text({ message: 'Panel URL', placeholder: 'https://panel.example.com' });
-  if (isCancel(url)) {
-    p.cancel();
-    process.exit(0);
+  let normalizedUrl: string | null = null;
+  while (!normalizedUrl) {
+    const urlInput = await p.text({ message: 'Panel URL', placeholder: 'https://panel.example.com' });
+    if (isCancel(urlInput)) {
+      p.cancel();
+      process.exit(0);
+    }
+    normalizedUrl = normalizePanelUrl(urlInput as string);
+    if (!normalizedUrl) p.log.error('Enter a valid URL, e.g. https://panel.example.com');
   }
 
   const apiKey = await p.text({ message: 'Application API key', placeholder: 'ptla_...' });
@@ -101,13 +133,13 @@ export async function getPanelConfig(): Promise<PanelConfig> {
     process.exit(0);
   }
 
-  const cfg: PanelConfig = {
-    url: (url as string).replace(/\/$/, ''),
+  const config: PanelConfig = {
+    url: normalizedUrl,
     apiKey: apiKey as string,
   };
 
-  saveConfigFile(cfg);
+  saveConfigFile(config);
   p.log.success(`Config saved to ${CONFIG_PATH}`);
 
-  return cfg;
+  return config;
 }
